@@ -6,7 +6,10 @@ from geometry_msgs.msg import TwistStamped
 
 
 
+"""
+Make it turn torwards the direction of the shortest distance
 
+"""
 
 
 class LidarDist(Node):
