@@ -5,6 +5,12 @@ from sensor_msgs.msg import LaserScan
 class LaserScanSplit():
     """
     Class for splitting LaserScan into three parts.
+
+    ex. LMR = [0,0,1]
+    
+    if the mean of the scans in that section are between 0.3-0.7, than the value for that section is 1,  else 0.
+
+    Hidden state, j make a var for this, will be whether or not a person is in the left right or middle, just compare lowest mean here.
     """
 
     def __init__(self):
