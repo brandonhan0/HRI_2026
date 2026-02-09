@@ -3,27 +3,36 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import TwistStamped
-import time
-
-import numpy.matlib
+import random
 """  
 
 Likelyhoods:
 
     P( next | current ):
-            L     R    F   given
-      000  0.33  0.33 0.33
-O(t)  100  1.00  0.00 0.00
-      010  0.00  0.00 1.00
-      001  0.00  0.00 0.00
-      101  0.50  0.50 0.00
-      110  0.50  0.00 0.50
-      011  0.00  0.50 0.50
-      111  0.33  0.33 0.33
+             L     R    F   given
+      000 | 0.33  0.33 0.33
+O(t)  100 | 1.00  0.00 0.00
+      010 | 0.00  0.00 1.00
+      001 | 0.00  1.00 0.00
+      101 | 0.50  0.50 0.00
+      110 | 0.50  0.00 0.50
+      011 | 0.00  0.50 0.50
+      111 | 0.33  0.33 0.33
 """
-B = [[0.33, 0.33, 0.33],[0.33, 0.33, 0.33],[0.33, 0.33, 0.33]]
 
+outcomes = ["Left","Right","Forward"]
 
+P = [[0.33, 0.33, 0.33],
+     [1.00, 0.00, 0.00],
+     [0.00, 0.00, 1.00],
+     [0.00, 0.00, 1.00],
+     [0.00, 1.00, 0.00],
+     [0.50, 0.00, 0.50],
+     [0.00, 0.50, 0.50],
+     [0.33, 0.33, 0.33]]
+
+transition_prob = random.choices(outcomes, weights=P[0], k=1)
+print(f"transition_prob: {transition_prob[0]}")
 
 class LidarDist(Node):
    def __init__(self):
@@ -43,55 +52,71 @@ class LidarDist(Node):
        self.direction = -1
        self.turn_msg = TwistStamped()
        self.turn_msg.twist.angular.z = 0.0  #rad/s
+       self.turn_msg.twist.linear.x = 0.0
        self.latest_scan = None
+       self.human = ""
+       self.left_mean = 0
+       self.right_mean = 0
+       self.front_mean = 0
 
    def lidar_callback(self, msg): # bc it will error if timer and lidar callback r the same bleh
        self.latest_scan = msg
        
    def control_loop(self):
-       min_dist = float('inf')
-       min_i = 0
-
        if self.latest_scan is None:
            self.get_logger().info(f'dying')
            return
 
        ranges = self.latest_scan.ranges#[540:550] # front only should be idk battery died
-       for i in range(len(ranges)): # find min dist
-           
-           if ranges[i] < min_dist:
-               if i > 120 and i < 900:
-                  continue
-               else:   
-                  min_dist = ranges[i]
-                  min_i = i
-       self.get_logger().info(f'i: {min_i}')
+       for i in range(len(ranges)): # find min dist           
+            if i > 120 and i < 900: # backwards we dont care ab this
+                continue
+           if min_i <120 and min_i > 0: # left
+               self.turn_msg.twist.angular.z = 0.5
+               self.turn_msg.twist.linear.x = 0.0 * self.direction
+               self.left_mean = (self.left_mean + range[i]) / 2 # calc mean for left
+           elif min_i > 900 and min_i < 1000: # right
+               self.turn_msg.twist.angular.z =  -0.5
+               self.turn_msg.twist.linear.x = 0.0 * self.direction
+               self.left_mean = (self.left_mean + range[i]) / 2 # calc mean for right
+           elif i > 1000: # forward (i > 1000)
+               self.front_mean = (self.left_mean + range[i]) / 2 # calc front mean
+               self.turn_msg.twist.angular.z =  math.pi * 0.0
+               if min_dist < self.target_dist:
+                  self.turn_msg.twist.linear.x = -0.2 * self.direction
+               elif min_dist > self.target_dist:
+                   self.turn_msg.twist.linear.x = 0.2 * self.direction
+               else:
+                   self.turn_msg.twist.linear.x = 0.0
+        cur_o = [0,0,0]
+        if self.left_mean > 0.4 and self.left_mean < 0.7:
+            cur_o[0]
+        if self.right_mean > 0.4 and self.right_mean < 0.7:
+            cur_o[1]
+        if self.center_mean > 0.4 and self.center_mean < 0.7:
+            cur_o[2]
 
-       if min_i <120 and min_i > 0: # left
-           self.turn_msg.twist.angular.z = 0.5
-           self.turn_msg.twist.linear.x = 0.0 * self.direction
+        match(cur_o):
+            case ([0,0,0]):
+                thing = 0
+            case ([1,0,0]):
+                thing = 1
+            case ([0,1,0]):
+                thing = 2
+            case ([0,0,1]):
+                thing = 3
+            case ([1,0,1]):
+                thing = 4
+            case ([1,1,0]):
+                thing = 5
+            case ([0,1,1]):
+                thing =6
+            case ([1,1,1]):
+                thing = 7
+        transition_prob = random.choices(outcomes, weights=P[thing], k=1)
+        print(f"next transition_prob for {P[thing]}: {transition_prob[0]}")
 
-           self.get_logger().info(f'turning left?')
-
-       elif min_i > 900 and min_i < 1000: # right
-           self.turn_msg.twist.angular.z =  -0.5
-           self.turn_msg.twist.linear.x = 0.0 * self.direction
-           self.get_logger().info(f'turning right?')
-
-       else: # forward
-           self.turn_msg.twist.angular.z =  math.pi * 0.0
-           self.get_logger().info(f'no turn')
-           if min_dist < self.target_dist:
-              self.turn_msg.twist.linear.x = -0.2 * self.direction
-           elif min_dist > self.target_dist:
-               self.turn_msg.twist.linear.x = 0.2 * self.direction
-           else:
-               self.turn_msg.twist.linear.x = 0.0
-
-       self.get_logger().info(f'Minimum distance: {min_dist}')
-      
-
-       self.publisher_.publish(self.turn_msg) # move torwards the target
+       #self.publisher_.publish(self.turn_msg) # move torwards the target
       
 def main(args=None):
    rclpy.init(args=args)
