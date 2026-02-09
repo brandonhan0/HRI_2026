@@ -31,9 +31,6 @@ P = [[0.33, 0.33, 0.33],
     [0.00, 0.50, 0.50],
     [0.33, 0.33, 0.33]]
 
-transition_prob = random.choices(outcomes, weights=P[0], k=1)
-print(f"transition_prob: {transition_prob[0]}")
-
 class LidarDist(Node):
     def __init__(self):
         super().__init__('lidar_dist')
@@ -87,11 +84,11 @@ class LidarDist(Node):
                 self.turn_msg.twist.linear.x = 0.0
         cur_o = [0,0,0]
         if left_mean > 0.4 and left_mean < 0.7:
-            cur_o[0]
+            cur_o[0] = 1
         if right_mean > 0.4 and right_mean < 0.7:
-            cur_o[1]
+            cur_o[1] = 1
         if front_mean > 0.4 and front_mean < 0.7:
-            cur_o[2]
+            cur_o[2] = 1
 
         match(cur_o):
             case ([0,0,0]):
