@@ -33,15 +33,10 @@ class LidarDist(Node):
 
 
        self.turn_msg = TwistStamped()
-       self.turn_msg.twist.angular.z = 0  #rad/s
+       self.turn_msg.twist.angular.z = 0.0  #rad/s
 
 
        self.latest_scan = None
-
-
-
-
-
 
    def lidar_callback(self, msg):
        self.latest_scan = msg
@@ -51,22 +46,35 @@ class LidarDist(Node):
 
    def control_loop(self):
        min_dist = float('inf')
+       min_i = 0
 
        if self.latest_scan is None:
            self.get_logger().info(f'dying')
            return
 
-       ranges = self.latest_scan.ranges[540:550] # front only should be idk battery died
-       for i in range(ranges): # find min dist
+       ranges = self.latest_scan.ranges#[540:550] # front only should be idk battery died
+       for i in range(len(ranges)): # find min dist
+           
            if ranges[i] < min_dist:
-               min_dist = ranges[i]
+               if i > 120 and i < 900:
+                  break
+               else:   
+                  min_dist = ranges[i]
+                  min_i = i
+       self.get_logger().info(f'i: {min_i}')
 
-       if i < 5: # left
-           self.turn_msg.twist.angular.z = math.pi * -0.5
-       elif i > 10: # right
-           self.turn_msg.twist.angular.z =  math.pi * 0.5
-       else: # right
-           self.turn_msg.twist.angular.z =  math.pi * 0.5
+       if min_i <120 and min_i > 90: # left
+           self.turn_msg.twist.angular.z = math.pi * -5
+           self.get_logger().info(f'turning left?')
+
+       elif min_i > 900 and min_i < 1000: # right
+           self.turn_msg.twist.angular.z =  math.pi * 5
+           self.get_logger().info(f'turning right?')
+
+       else: # forward
+           self.turn_msg.twist.angular.z =  math.pi * 0.0
+           self.get_logger().info(f'no turn')
+
       
        if min_dist < self.target_dist:
            self.forward_msg.twist.linear.x = -1.0 * self.direction
