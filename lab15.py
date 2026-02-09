@@ -33,7 +33,7 @@ class LidarDist(Node):
 
 
        self.turn_msg = TwistStamped()
-       self.turn_msg.twist.angular.z = math.pi * 0.5  #rad/s
+       self.turn_msg.twist.angular.z = 0  #rad/s
 
 
        self.latest_scan = None
@@ -52,22 +52,22 @@ class LidarDist(Node):
    def control_loop(self):
        min_dist = float('inf')
 
-
        if self.latest_scan is None:
            self.get_logger().info(f'dying')
            return
 
-
        ranges = self.latest_scan.ranges[540:550] # front only should be idk battery died
+       for i in range(ranges): # find min dist
+           if ranges[i] < min_dist:
+               min_dist = ranges[i]
 
-
-
-
-       for i in ranges: # find min dist
-           if i < min_dist:
-               min_dist = i
-
-
+       if i < 5: # left
+           self.turn_msg.twist.angular.z = math.pi * -0.5
+       elif i > 10: # right
+           self.turn_msg.twist.angular.z =  math.pi * 0.5
+       else: # right
+           self.turn_msg.twist.angular.z =  math.pi * 0.5
+      
        if min_dist < self.target_dist:
            self.forward_msg.twist.linear.x = -1.0 * self.direction
        elif min_dist > self.target_dist:
@@ -75,19 +75,10 @@ class LidarDist(Node):
        else:
            self.forward_msg.twist.linear.x = 0.0
 
-
        self.get_logger().info(f'Minimum distance: {min_dist}')
-
-
-
-
-       self.publisher_.publish(self.forward_msg)
-
-
-
-
-
-
+      
+       self.publisher_.publish(self.turn_msg) # turn first torwards the min distance
+       self.publisher_.publish(self.forward_msg) # move torwards the target
       
 def main(args=None):
    rclpy.init(args=args)
