@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import TwistStamped
+import time
 
 
 
@@ -57,40 +58,39 @@ class LidarDist(Node):
            
            if ranges[i] < min_dist:
                if i > 120 and i < 900:
-                  break
+                  continue
                else:   
                   min_dist = ranges[i]
                   min_i = i
        self.get_logger().info(f'i: {min_i}')
 
-       if min_i <120 and min_i > 90: # left
-           self.turn_msg.twist.angular.z = math.pi * -5
+       if min_i <120 and min_i > 0: # left
+           self.turn_msg.twist.angular.z = 0.5
+           self.turn_msg.twist.linear.x = 0.0 * self.direction
+
            self.get_logger().info(f'turning left?')
 
        elif min_i > 900 and min_i < 1000: # right
-           self.turn_msg.twist.angular.z =  math.pi * 5
+           self.turn_msg.twist.angular.z =  -0.5
+           self.turn_msg.twist.linear.x = 0.0 * self.direction
            self.get_logger().info(f'turning right?')
 
        else: # forward
            self.turn_msg.twist.angular.z =  math.pi * 0.0
            self.get_logger().info(f'no turn')
-
-      
-       if min_dist < self.target_dist:
-           self.forward_msg.twist.linear.x = -1.0 * self.direction
-       elif min_dist > self.target_dist:
-           self.forward_msg.twist.linear.x = 1.0 * self.direction
-       else:
-           self.forward_msg.twist.linear.x = 0.0
+           if min_dist < self.target_dist:
+              self.turn_msg.twist.linear.x = -0.2 * self.direction
+           elif min_dist > self.target_dist:
+               self.turn_msg.twist.linear.x = 0.2 * self.direction
+           else:
+               self.turn_msg.twist.linear.x = 0.0
 
        self.get_logger().info(f'Minimum distance: {min_dist}')
       
-       self.publisher_.publish(self.turn_msg) # turn first torwards the min distance
-       self.publisher_.publish(self.forward_msg) # move torwards the target
+
+       self.publisher_.publish(self.turn_msg) # move torwards the target
       
 def main(args=None):
    rclpy.init(args=args)
    lidar_dist = LidarDist()
    rclpy.spin(lidar_dist)
-   lidar_dist.destroy_node()
-   rclpy.shutdown()
