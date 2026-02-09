@@ -1,109 +1,99 @@
-import rospy
+import math
+import rclpy
+from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import TwistStamped
+import time
+
+import numpy.matlib
+"""  
+
+Likelyhoods:
+
+    P( next | current ):
+            L     R    F   given
+      000  0.33  0.33 0.33
+O(t)  100  1.00  0.00 0.00
+      010  0.00  0.00 1.00
+      001  0.00  0.00 0.00
+      101  0.50  0.50 0.00
+      110  0.50  0.00 0.50
+      011  0.00  0.50 0.50
+      111  0.33  0.33 0.33
+"""
+B = [[0.33, 0.33, 0.33],[0.33, 0.33, 0.33],[0.33, 0.33, 0.33]]
 
 
-class LaserScanSplit():
-    """
-    Class for splitting LaserScan into three parts.
 
-    ex. LMR = [0,0,1]
-    
-    if the mean of the scans in that section are between 0.3-0.7, than the value for that section is 1,  else 0.
+class LidarDist(Node):
+   def __init__(self):
+       super().__init__('lidar_dist')
+       self.subscription = self.create_subscription(  #Creating subscriber (Recieving Data)
+           LaserScan, #Telling the Lidar to turn on
+           '/scan',
+           self.lidar_callback, #Runs "callback" when data is received
+           10
+       )
+       self.subscription  #prevent unused variable warning
 
-    Hidden state, j make a var for this, will be whether or not a person is in the left right or middle, just compare lowest mean here.
-    """
 
-    def __init__(self):
+       self.create_timer(2, self.control_loop)
+       self.publisher_ = self.create_publisher(TwistStamped, '/gobilda/cmd_vel', 10)
+       self.target_dist = 0.5
+       self.direction = -1
+       self.turn_msg = TwistStamped()
+       self.turn_msg.twist.angular.z = 0.0  #rad/s
+       self.latest_scan = None
 
-        self.update_rate = 50
-        self.freq = 1./self.update_rate
+   def lidar_callback(self, msg): # bc it will error if timer and lidar callback r the same bleh
+       self.latest_scan = msg
+       
+   def control_loop(self):
+       min_dist = float('inf')
+       min_i = 0
 
-        # Initialize variables
-        self.scan_data = []
+       if self.latest_scan is None:
+           self.get_logger().info(f'dying')
+           return
 
-        # Subscribers
-        rospy.Subscriber("/scan", LaserScan, self.lidar_callback)
+       ranges = self.latest_scan.ranges#[540:550] # front only should be idk battery died
+       for i in range(len(ranges)): # find min dist
+           
+           if ranges[i] < min_dist:
+               if i > 120 and i < 900:
+                  continue
+               else:   
+                  min_dist = ranges[i]
+                  min_i = i
+       self.get_logger().info(f'i: {min_i}')
 
-        # Publishers
-        self.pub1 = rospy.Publisher('/scan1', LaserScan, queue_size=10)
-        self.pub2 = rospy.Publisher('/scan2', LaserScan, queue_size=10)
-        self.pub3 = rospy.Publisher('/scan3', LaserScan, queue_size=10)
+       if min_i <120 and min_i > 0: # left
+           self.turn_msg.twist.angular.z = 0.5
+           self.turn_msg.twist.linear.x = 0.0 * self.direction
 
-        # Timers
-        rospy.Timer(rospy.Duration(self.freq), self.laserscan_split_update)
+           self.get_logger().info(f'turning left?')
 
-    def lidar_callback(self, msg):
-        """
-        Callback function for the Scan topic
-        """
-        self.scan_data = msg
+       elif min_i > 900 and min_i < 1000: # right
+           self.turn_msg.twist.angular.z =  -0.5
+           self.turn_msg.twist.linear.x = 0.0 * self.direction
+           self.get_logger().info(f'turning right?')
 
-    def laserscan_split_update(self, event):
-        """
-        Function to update the split scan topics
-        """
+       else: # forward
+           self.turn_msg.twist.angular.z =  math.pi * 0.0
+           self.get_logger().info(f'no turn')
+           if min_dist < self.target_dist:
+              self.turn_msg.twist.linear.x = -0.2 * self.direction
+           elif min_dist > self.target_dist:
+               self.turn_msg.twist.linear.x = 0.2 * self.direction
+           else:
+               self.turn_msg.twist.linear.x = 0.0
 
-        scan1 = LaserScan()
-        scan2 = LaserScan()
-        scan3 = LaserScan()
+       self.get_logger().info(f'Minimum distance: {min_dist}')
+      
 
-        scan1.header = self.scan_data.header
-        scan2.header = self.scan_data.header
-        scan3.header = self.scan_data.header
-
-        scan1.angle_min = self.scan_data.angle_min
-        scan2.angle_min = self.scan_data.angle_min
-        scan3.angle_min = self.scan_data.angle_min
-
-        scan1.angle_max = self.scan_data.angle_max
-        scan2.angle_max = self.scan_data.angle_max
-        scan3.angle_max = self.scan_data.angle_max
-
-        scan1.angle_increment = self.scan_data.angle_increment
-        scan2.angle_increment = self.scan_data.angle_increment
-        scan3.angle_increment = self.scan_data.angle_increment
-
-        scan1.time_increment = self.scan_data.time_increment
-        scan2.time_increment = self.scan_data.time_increment
-        scan3.time_increment = self.scan_data.time_increment
-
-        scan1.scan_time = self.scan_data.scan_time
-        scan2.scan_time = self.scan_data.scan_time
-        scan3.scan_time = self.scan_data.scan_time
-
-        scan1.range_min = self.scan_data.range_min
-        scan2.range_min = self.scan_data.range_min
-        scan3.range_min = self.scan_data.range_min
-
-        scan1.range_max = self.scan_data.range_max
-        scan2.range_max = self.scan_data.range_max
-        scan3.range_max = self.scan_data.range_max
-
-        # LiDAR Range
-        n = len(self.scan_data.ranges)
-
-        scan1.ranges = [float('inf')] * n
-        scan2.ranges = [float('inf')] * n
-        scan3.ranges = [float('inf')] * n
-
-        # Splitting Block [three equal parts]
-        scan1.ranges[0 : n//3] = self.scan_data.ranges[0 : n//3]
-        scan2.ranges[n//3 : 2*n//3] = self.scan_data.ranges[n//3 : 2*n//3]
-        scan3.ranges[2*n//3 : n] = self.scan_data.ranges[2*n//3 : n]
-
-        # Publish the LaserScan
-        self.pub1.publish(scan1)
-        self.pub2.publish(scan2)
-        self.pub3.publish(scan3)
-
-    def kill_node(self):
-        """
-        Function to kill the ROS node
-        """
-        rospy.signal_shutdown("Done")
-
-if __name__ == '__main__':
-
-    rospy.init_node('laserscan_split_node')
-    LaserScanSplit()
-    rospy.spin()
+       self.publisher_.publish(self.turn_msg) # move torwards the target
+      
+def main(args=None):
+   rclpy.init(args=args)
+   lidar_dist = LidarDist()
+   rclpy.spin(lidar_dist)
