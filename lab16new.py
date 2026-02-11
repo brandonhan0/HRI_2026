@@ -72,16 +72,6 @@ class LidarDist(Node):
 
 
                 V[0][y] = start_p[y] * emit_p[y][obs[0]]
-
-
-                """
-        emission_probability = {'Left': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
-                                 'Right': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
-                                 'Front': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]}}        
-                """
-
-
-
                 path[y] = [y]
 
             for t in range(1, len(obs)):
@@ -159,10 +149,11 @@ class LidarDist(Node):
         transition_probability = {'Left': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
                                  'Right': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
                                  'Front': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]}}
-        emission_probability = {'Left': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0,},
-                                'Right': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0,}
-                                'Front': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0,}
+        emission_probability = {'Left': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0},
+                                'Right': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0}
+                                'Front': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0}
                                 }      
+        observations = ["000", "001", "011", "111", "110", "101", "100", "010"]
         print(viterbi(observations, states, start_probability, transition_probability, emission_probability))
 
 
