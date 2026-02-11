@@ -4,6 +4,8 @@ from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import TwistStamped
 import random
+import numpy as np
+
 """  
 
 Likelyhoods:
@@ -20,7 +22,7 @@ O(t)  100 | 1.00  0.00 0.00
       111 | 0.33  0.33 0.33
 """
 
-outcomes = ["Left","Right","Forward"]
+outcomes = ["Left","Right","Front"]
 
 P = [[0.33, 0.33, 0.33],
     [1.00, 0.00, 0.00],
@@ -30,6 +32,9 @@ P = [[0.33, 0.33, 0.33],
     [0.50, 0.00, 0.50],
     [0.00, 0.50, 0.50],
     [0.33, 0.33, 0.33]]
+
+transition_prob = random.choices(outcomes, weights=P[0], k=1)
+print(f"transition_prob: {transition_prob[0]}")
 
 class LidarDist(Node):
     def __init__(self):
@@ -56,7 +61,52 @@ class LidarDist(Node):
     def lidar_callback(self, msg): # bc it will error if timer and lidar callback r the same bleh
         self.latest_scan = msg
        
+
     def control_loop(self):
+        
+        def viterbi(obs, states, start_p, trans_p, emit_p):
+            V = [{}]
+            path = {}
+
+            for y in states:
+
+
+
+                print("y =", y, "type(y) =", type(y))
+                print("obs[0] =", obs[0], "type(obs[0]) =", type(obs[0]))
+                print("emit_p[y] keys sample:", list(emit_p[y].keys())[:10])
+
+
+                V[0][y] = start_p[y] * emit_p[y][obs[0]]
+
+
+                """
+        emission_probability = {'Left': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
+                                 'Right': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
+                                 'Front': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]}}        
+                """
+
+
+
+                path[y] = [y]
+
+            for t in range(1, len(obs)):
+                V.append({})
+                newpath = {}
+
+                for y in states:
+                    (prob, state) = max(
+                        [(V[t-1][y0] * trans_p[y0][y] * emit_p[y][obs[t]], y0) for y0 in states]
+                    )
+                    V[t][y] = prob
+                    newpath[y] = path[state] + [y]
+
+                path = newpath
+
+            (prob, state) = max([(V[-1][y], y) for y in states])
+            return (prob, path[state])
+
+
         left_mean = 0
         right_mean = 0
         front_mean = 0
@@ -84,11 +134,11 @@ class LidarDist(Node):
                 self.turn_msg.twist.linear.x = 0.0
         cur_o = [0,0,0]
         if left_mean > 0.4 and left_mean < 0.7:
-            cur_o[0] = 1
+            cur_o[0]
         if right_mean > 0.4 and right_mean < 0.7:
-            cur_o[1] = 1
+            cur_o[1]
         if front_mean > 0.4 and front_mean < 0.7:
-            cur_o[2] = 1
+            cur_o[2]
 
         match(cur_o):
             case ([0,0,0]):
@@ -109,8 +159,20 @@ class LidarDist(Node):
                 thing = 7
         transition_prob = random.choices(outcomes, weights=P[thing], k=1)
         print(f"next transition_prob for {P[thing]}: {transition_prob[0]}")
+        
+        states = outcomes
+        start_probability = {'Left': 0.33, 'Right': 0.33, 'Front': 0.33}
+        transition_probability = {'Left': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
+                                 'Right': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
+                                 'Front': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]}}
+        emission_probability = {'Left': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0,},
+                                'Right': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0,}
+                                'Front': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0,}
+                                }      
+        print(viterbi(observations, states, start_probability, transition_probability, emission_probability))
 
-       #self.publisher_.publish(self.turn_msg) # turn torwards the target
+
+        #self.publisher_.publish(self.turn_msg) # turn torwards the target
       
 def main(args=None):
    rclpy.init(args=args)
