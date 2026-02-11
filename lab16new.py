@@ -126,30 +126,30 @@ class LidarDist(Node):
                 front_mean = (front_mean + float(ranges[i])) / 2 # calc front mean
                 self.turn_msg.twist.angular.z =  math.pi * 0.0
                 self.turn_msg.twist.linear.x = 0.0
-        cur_o = [0,0,0]
+        cur_o = "000"
         if left_mean > 0.4 and left_mean < 0.7:
-            cur_o[0]
+            cur_o[0] = "1"
         if right_mean > 0.4 and right_mean < 0.7:
-            cur_o[1]
+            cur_o[1] = "1"
         if front_mean > 0.4 and front_mean < 0.7:
-            cur_o[2]
+            cur_o[2] = "1"
 
         match(cur_o):
-            case ([0,0,0]):
+            case ("000"):
                 thing = 0
-            case ([1,0,0]):
+            case ("100"):
                 thing = 1
-            case ([0,1,0]):
+            case ("010"):
                 thing = 2
-            case ([0,0,1]):
+            case ("001"):
                 thing = 3
-            case ([1,0,1]):
+            case ("101"):
                 thing = 4
-            case ([1,1,0]):
+            case ("110"):
                 thing = 5
-            case ([0,1,1]):
+            case ("011"):
                 thing =6
-            case ([1,1,1]):
+            case ("111"):
                 thing = 7
         transition_prob = random.choices(outcomes, weights=P[thing], k=1)
         print(f"next transition_prob for {P[thing]}: {transition_prob[0]}")
