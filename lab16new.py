@@ -71,12 +71,6 @@ class LidarDist(Node):
             for y in states:
 
 
-
-                print("y =", y, "type(y) =", type(y))
-                print("obs[0] =", obs[0], "type(obs[0]) =", type(obs[0]))
-                print("emit_p[y] keys sample:", list(emit_p[y].keys())[:10])
-
-
                 V[0][y] = start_p[y] * emit_p[y][obs[0]]
 
 
