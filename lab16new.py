@@ -65,30 +65,26 @@ class LidarDist(Node):
     def control_loop(self):
         
         def viterbi(obs, states, start_p, trans_p, emit_p):
-            V = [{}]
-            path = {}
-
-            for y in states:
-
-
+            V = [{}] # list of dicts, one dict per step
+            path = {} # most likely path
+            for y in states: # set most likley path initally
                 V[0][y] = start_p[y] * emit_p[y][obs[0]]
-                path[y] = [y]
-
-            for t in range(1, len(obs)):
+                path[y] = [y] # start probabilities, [y ends up being best end probability ]
+            for t in range(1, len(obs)): # updates most probable path
                 V.append({})
                 newpath = {}
-
-                for y in states:
-                    (prob, state) = max(
+                for y in states: # backwards recusion, for each current state choose the most likely previous outcome
+                    (prob, state) = max( # change most likely path based off backwards recursion calculating probability based off ending point
+                                        # picks max probability and returns the max probability, and best prev state
                         [(V[t-1][y0] * trans_p[y0][y] * emit_p[y][obs[t]], y0) for y0 in states]
                     )
-                    V[t][y] = prob
-                    newpath[y] = path[state] + [y]
+                    V[t][y] = prob # setting probability of most likley path, v[t][y] is the most likely path
+                    newpath[y] = path[state] + [y]  # takes best prev state and adds it to path
 
                 path = newpath
 
-            (prob, state) = max([(V[-1][y], y) for y in states])
-            return (prob, path[state])
+            (prob, state) = max([(V[-1][y], y) for y in states]) # final termination, picks the best "path" that has the highest prob
+            return (prob, path[state]) # return the prob and the path
 
 
         left_mean = 0
@@ -159,9 +155,9 @@ class LidarDist(Node):
                                  'Right': {'Left': 0.0001, 'Right': 0.5,'Front': 0.4999},
                                  'Front': {'Left': 0.25, 'Right': 0.25,'Front': 0.5}}
 
-        emission_probability = {'Left': {'000': 0.124, '100': 0.37,'010': 0, '001': 0, '101': 0.18, '110': 0.37, '011': 0, '111': 0.18},
-                                'Right': {'000': 0.124, '100': 0,'010': 0, '001': 0.37, '101': 0.18, '110': 0, '011': 0.18, '111': 0.124},
-                                'Front': {'000': 0.124, '100': 0,'010': 0.37, '001': 0,'101': 0, '110': 0.18, '011': 0.18, '111': 0.124}
+        emission_probability = {'Left': {'000': 0.33, '100': 1,'010': 0, '001': 0, '101': 0.5, '110': 0.5, '011': 0, '111': 0.33},
+                                'Right': {'000': 0.33, '100': 0,'010': 0, '001': 1, '101': 0.5, '110': 0, '011': 0.5, '111': 0.33},
+                                'Front': {'000': 0.33, '100': 0,'010': 1, '001': 0,'101': 0, '110': 0.5, '011': 0.5, '111': 0.33}
                                 }      
         observations = ["000", "001", "011", "111", "110", "101", "100", "010"]
         print(viterbi(observations, states, start_probability, transition_probability, emission_probability))
