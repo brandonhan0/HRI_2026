@@ -57,6 +57,8 @@ class LidarDist(Node):
         self.turn_msg.twist.linear.x = 0.0
         self.latest_scan = None
         self.human = ""
+        self.counter = 0
+        self.observations = []
 
     def lidar_callback(self, msg): # bc it will error if timer and lidar callback r the same bleh
         self.latest_scan = msg
@@ -91,62 +93,75 @@ class LidarDist(Node):
         right_mean = 0
         front_mean = 0
 
+        self.counter += 1
+
         
         if self.latest_scan is None:
             self.get_logger().info(f'dying')
             return
 
         ranges = self.latest_scan.ranges # front only should be idk battery died
-        for i in range(len(ranges)): # find min dist           
+        for i in range(len(ranges)): # find min dist   
+            if math.isinf(ranges[i]):
+                continue
             if i > 120 and i < 900: # backwards we dont care ab this
                 continue
-            if i <120 and i > 0: # left
+            elif i <120 and i > 0: # left
                 self.turn_msg.twist.angular.z = 0.5
                 self.turn_msg.twist.linear.x = 0.0 * self.direction
                 left_mean = (left_mean + float(ranges[i])) / 2 # calc mean for left
             elif i > 900 and i < 1000: # right
                 self.turn_msg.twist.angular.z =  -0.5
                 self.turn_msg.twist.linear.x = 0.0 * self.direction
-                left_mean = (left_mean + float(ranges[i])) / 2 # calc mean for right
+                right_mean = (right_mean + float(ranges[i])) / 2 # calc mean for right
             elif i > 1000: # forward (i > 1000)
                 front_mean = (front_mean + float(ranges[i])) / 2 # calc front mean
                 self.turn_msg.twist.angular.z =  math.pi * 0.0
                 self.turn_msg.twist.linear.x = 0.0
         cur_o = [0,0,0]
+        cur_os = "000"
+        
         if left_mean > 0.4 and left_mean < 0.7:
             cur_o[0] = 1
         if right_mean > 0.4 and right_mean < 0.7:
             cur_o[1] = 1
         if front_mean > 0.4 and front_mean < 0.7:
             cur_o[2] = 1
+        print(f"left_mean: {left_mean}")
+        print(f"right_mean: {right_mean}")
+        print(f"front_mean: {front_mean}")
 
         match(cur_o):
             case ([0,0,0]):
-                cur_o = "000"
+                cur_os = "000"
                 thing = 0
             case ([1,0,0]):
-                cur_o = "100"
+                cur_os = "100"
                 thing = 1
             case ([0,1,0]):
-                cur_o = "010"
+                cur_os = "010"
                 thing = 2
             case ([0,0,1]):
-                cur_o = "001"
+                cur_os = "001"
                 thing = 3
             case ([1,0,1]):
-                cur_o = "101"
+                cur_os = "101"
                 thing = 4
             case ([1,1,0]):
-                cur_o = "110"
+                cur_os = "110"
                 thing = 5
             case ([0,1,1]):
-                cur_o = "011"
+                cur_os = "011"
                 thing =6
             case ([1,1,1]):
-                cur_o = "111"
+                cur_os = "111"
                 thing = 7
+        print(cur_os)
+
+
+
         transition_prob = random.choices(outcomes, weights=P[thing], k=1)
-        print(f"next transition_prob for {P[thing]}: {transition_prob[0]}")
+        #print(f"next transition_prob for {P[thing]}: {transition_prob[0]}")
         
         states = outcomes
         start_probability = {'Left': 0.33, 'Right': 0.33, 'Front': 0.33}
@@ -159,24 +174,14 @@ class LidarDist(Node):
                                 'Right': {'000': 0.33, '100': 0,'010': 0, '001': 1, '101': 0.5, '110': 0, '011': 0.5, '111': 0.33},
                                 'Front': {'000': 0.33, '100': 0,'010': 1, '001': 0,'101': 0, '110': 0.5, '011': 0.5, '111': 0.33}
                                 }      
-        observations = ["000", "001", "011", "111", "110", "101", "100", "010"]
-        print(viterbi(observations, states, start_probability, transition_probability, emission_probability))
 
-        """  
-
-        Likelyhoods:
-
-            P( next | current ):
-                    L     R    F   given
-            000 | 0.33  0.33 0.33
-            100 | 1.00  0.00 0.00
-            010 | 0.00  0.00 1.00
-            001 | 0.00  1.00 0.00
-            101 | 0.50  0.50 0.00
-            110 | 0.50  0.00 0.50
-            011 | 0.00  0.50 0.50
-            111 | 0.33  0.33 0.33
-        """
+        if self.counter < 20:
+            self.observations.append(cur_os)
+        else:
+            print(viterbi(self.observations, states, start_probability, transition_probability, emission_probability))
+            self.counter = 0
+            self.observations = []
+            self.observations.append(cur_os)
 
         #self.publisher_.publish(self.turn_msg) # turn torwards the target
       
