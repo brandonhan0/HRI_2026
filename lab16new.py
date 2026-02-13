@@ -116,46 +116,71 @@ class LidarDist(Node):
                 front_mean = (front_mean + float(ranges[i])) / 2 # calc front mean
                 self.turn_msg.twist.angular.z =  math.pi * 0.0
                 self.turn_msg.twist.linear.x = 0.0
-        cur_o = "000"
+        cur_o = [0,0,0]
         if left_mean > 0.4 and left_mean < 0.7:
-            cur_o[0] = "1"
+            cur_o[0] = 1
         if right_mean > 0.4 and right_mean < 0.7:
-            cur_o[1] = "1"
+            cur_o[1] = 1
         if front_mean > 0.4 and front_mean < 0.7:
-            cur_o[2] = "1"
+            cur_o[2] = 1
 
         match(cur_o):
-            case ("000"):
+            case ([0,0,0]):
+                cur_o = "000"
                 thing = 0
-            case ("100"):
+            case ([1,0,0]):
+                cur_o = "100"
                 thing = 1
-            case ("010"):
+            case ([0,1,0]):
+                cur_o = "010"
                 thing = 2
-            case ("001"):
+            case ([0,0,1]):
+                cur_o = "001"
                 thing = 3
-            case ("101"):
+            case ([1,0,1]):
+                cur_o = "101"
                 thing = 4
-            case ("110"):
+            case ([1,1,0]):
+                cur_o = "110"
                 thing = 5
-            case ("011"):
+            case ([0,1,1]):
+                cur_o = "011"
                 thing =6
-            case ("111"):
+            case ([1,1,1]):
+                cur_o = "111"
                 thing = 7
         transition_prob = random.choices(outcomes, weights=P[thing], k=1)
         print(f"next transition_prob for {P[thing]}: {transition_prob[0]}")
         
         states = outcomes
         start_probability = {'Left': 0.33, 'Right': 0.33, 'Front': 0.33}
-        transition_probability = {'Left': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
-                                 'Right': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]},
-                                 'Front': {'Left': P[thing][0], 'Right': P[thing][1],'Front': P[thing][2]}}
-        emission_probability = {'Left': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0},
-                                'Right': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0}
-                                'Front': {'000': 0, '100': 0,'010': 0, '001': '101': 0, '110': 110, '011': 0, '111': 0}
+
+        transition_probability = {'Left': {'Left': 0.5, 'Right': 0.0001,'Front': 0.4999},
+                                 'Right': {'Left': 0.0001, 'Right': 0.5,'Front': 0.4999},
+                                 'Front': {'Left': 0.25, 'Right': 0.25,'Front': 0.5}}
+
+        emission_probability = {'Left': {'000': 0.124, '100': 0.37,'010': 0, '001': 0, '101': 0.18, '110': 0.37, '011': 0, '111': 0.18},
+                                'Right': {'000': 0.124, '100': 0,'010': 0, '001': 0.37, '101': 0.18, '110': 0, '011': 0.18, '111': 0.124},
+                                'Front': {'000': 0.124, '100': 0,'010': 0.37, '001': 0,'101': 0, '110': 0.18, '011': 0.18, '111': 0.124}
                                 }      
         observations = ["000", "001", "011", "111", "110", "101", "100", "010"]
         print(viterbi(observations, states, start_probability, transition_probability, emission_probability))
 
+        """  
+
+        Likelyhoods:
+
+            P( next | current ):
+                    L     R    F   given
+            000 | 0.33  0.33 0.33
+            100 | 1.00  0.00 0.00
+            010 | 0.00  0.00 1.00
+            001 | 0.00  1.00 0.00
+            101 | 0.50  0.50 0.00
+            110 | 0.50  0.00 0.50
+            011 | 0.00  0.50 0.50
+            111 | 0.33  0.33 0.33
+        """
 
         #self.publisher_.publish(self.turn_msg) # turn torwards the target
       
