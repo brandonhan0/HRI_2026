@@ -104,7 +104,7 @@ class LidarDist(Node):
         for i in range(len(ranges)): # find min dist   
             if math.isinf(ranges[i]):
                 continue
-            if i > 120 and i < 900: # backwards we dont care ab this
+            if i > 120 and i < 900 : # backwards we dont care ab this
                 continue
             elif i <120 and i > 0: # left
                 self.turn_msg.twist.angular.z = 0.5
@@ -118,6 +118,7 @@ class LidarDist(Node):
                 front_mean = (front_mean + float(ranges[i])) / 2 # calc front mean
                 self.turn_msg.twist.angular.z =  math.pi * 0.0
                 self.turn_msg.twist.linear.x = 0.0
+                
         cur_o = [0,0,0]
         cur_os = "000"
         
