@@ -9,7 +9,7 @@ from geometry_msgs.msg import Twist, PoseStamped
 
 
 
-class GotoGoal(Node): # subscribes to goal pose and publishes that to ros2, we also wanna subscribe to clicked point thats the rviz point
+class GotoGoal(Node): # we dont even need this bruh idk what im doing but like itll set a timer to run the go to goal pose once
     def __init__(self):
         super().__init__('go_to_goal_pose')
 
