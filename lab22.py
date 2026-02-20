@@ -15,8 +15,10 @@ class GotoGoal(Node): # subscribes to goal pose and publishes that to ros2, we a
 
         self.publisher_goal = self.create_publisher(String, '/goal_pose', 10)
         self.publisher_iniital = self.create_publisher(String, '/initialpose', 10)
-
-        self.create_timer(0.5, self.go_to_goal_pose)
+        self.go = True
+        if self.go:
+            self.create_timer(1, self.go_to_goal_pose)
+            self.go = False
 
     def go_to_goal_pose(self):
 
@@ -41,10 +43,10 @@ class GotoGoal(Node): # subscribes to goal pose and publishes that to ros2, we a
         self.setInitialPose(init_pose)
         self.waitUntilNav2Active() # if autostarted, else use lifecycleStartup()
 
-        path = self.getPath(init_pose, goal_pose)
+        path = self.getPath(init_pose, goal_pose) # finds path to go to goal pose from inital pose
         smoothed_path = self.smoothPath(path)
 
-        self.goToPose(goal_pose)
+        self.goToPose(goal_pose) # actually moves to the pose
         while not self.isTaskComplete():
             feedback = self.getFeedback()
         if feedback.navigation_duration > 600:
