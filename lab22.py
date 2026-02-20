@@ -20,16 +20,22 @@ class GotoGoal(Node): # subscribes to goal pose and publishes that to ros2, we a
 
     def go_to_goal_pose(self):
 
-
         init_pose = PoseStamped()
         goal_pose = PoseStamped()
 
-        init_pose.header = ???
-        init_pose.pose = ???
+        init_pose.header.frame_id = 'map'
+        init_pose.header.stamp = navigator.get_clock().now().to_msg()
+        init_pose.pose.position.x = 0.0
+        init_pose.pose.position.y = 0.0
+        init_pose.pose.orientation.z = 0.0
+        init_pose.pose.orientation.w = 1.0
 
-        goal_pose.header = ???
-        goal_pose.pose = ???
-
+        goal_pose.header.frame_id = 'map'
+        goal_pose.header.stamp = navigator.get_clock().now().to_msg()
+        goal_pose.pose.position.x = 1.0
+        goal_pose.pose.position.y = 1.0
+        goal_pose.pose.orientation.z = 0.0
+        goal_pose.pose.orientation.w = 1.0
 
 
         self.setInitialPose(init_pose)
