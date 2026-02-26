@@ -14,7 +14,15 @@ class CameraThing(Node):
 
     def callback(self, msg):
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        crop = img[50:350,50:350]
+        crop = img[50:350,50:350]  # this is a array
+
+        lower_red = np.array([150, 0, 0]) # test this
+        upper_red = np.array([255, 50, 50]) # test this too
+
+        is_red = cv2.inRange(crop, lower_red, upper_red)
+
+
+        
         crop_img = self.bridge.cv2_to_imgmsg(crop, encoding="bgr8")
         self.img_pub.publish(crop_img)
 
