@@ -3,6 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
+import numpy as np
 
 class CameraThing(Node):
     def __init__(self):
@@ -19,12 +20,11 @@ class CameraThing(Node):
         lower_red = np.array([150, 0, 0]) # test this
         upper_red = np.array([255, 50, 50]) # test this too
 
-        is_red = cv2.inRange(crop, lower_red, upper_red)
+        mask = cv2.inRange(crop, lower_red, upper_red)
 
-
+        is_red = np.any(mask > 0)
         
-        crop_img = self.bridge.cv2_to_imgmsg(crop, encoding="bgr8")
-        self.img_pub.publish(crop_img)
+        
 
 def main(args=None):
     rclpy.init(args=args)
