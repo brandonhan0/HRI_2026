@@ -16,7 +16,7 @@ class CameraThing(Node):
         self.publisher_ = self.create_publisher(TwistStamped, '/gobilda/cmd_vel', 10)
         self.direction = 1
         self.forward_msg = TwistStamped()
-        self.forward_msg.twist.linear.x = float(0) #1 m/s
+        self.forward_msg.twist.linear.x = float(0.2) #1 m/s
         self.is_red = False
 
 
@@ -31,9 +31,9 @@ class CameraThing(Node):
 
         self.is_red = np.any(mask > 0)
 
-   def control_loop(self):
+    def control_loop(self):
         if self.is_red: # goes forward if is_red is true
-             self.turn_msg.twist.linear.x = 0.2 * self.direction
+             self.forward_msg.twist.linear.x = 0.2 * self.direction
              self.publisher_.publish(self.forward_msg)
         
 
