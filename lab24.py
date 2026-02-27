@@ -33,15 +33,16 @@ class CameraThing(Node):
         self.bridge = CvBridge()
         self.img_pub = self.create_publisher(Image, '/example_image', 10)
         self.subscription = self.create_subscription(Image, '/oakd/rgb/image_raw', self.callback, 10)
-        
-        self.create_timer(1, self.callback)
-        self.create_timer(1, self.getKey)
+        self.create_timer(0.1, self.getKey)
 
         self.publisher_ = self.create_publisher(TwistStamped, '/gobilda/cmd_vel', 10)
         self.direction = 1
         self.forward_msg = TwistStamped()
         self.forward_msg.twist.linear.x = float(0.2) #1 m/s
         self.is_red = False
+        self.key = ""
+
+
 
     def callback(self, msg): # reads red
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -59,23 +60,26 @@ class CameraThing(Node):
 
         print(self.is_red)
 
+        if self.is_red: # goes forward if is_red is true
+            self.forward_msg.twist.linear.x = 1.0
+            self.publisher_.publish(self.forward_msg)
+        elif self.key == 'g':
+            self.forward_msg.twist.linear.x = -1.0
+            self.publisher_.publish(self.forward_msg)
+
     def getKey(self): # read keyboard output
         if sys.platform == 'win32':
             # getwch() returns a string on Windows
-            self.key = msvcrt.getwch()
+            if msvcrt.kbhit() > 0:
+                self.key = msvcrt.getwch()
+            else:
+                self.key = ""
         else:
             tty.setraw(sys.stdin.fileno())
             # sys.stdin.read() returns a string on Linux
             self.key = sys.stdin.read(1)
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
         
-    def control_loop(self):
-        if self.is_red: # goes forward if is_red is true
-            self.forward_msg.twist.linear.x = -1.0
-            self.publisher_.publish(self.forward_msg)
-        elif self.key == 'g':
-            self.forward_msg.twist.linear.x = 1.0
-            self.publisher_.publish(self.forward_msg)
 
 def main(args=None):
     rclpy.init(args=args)
