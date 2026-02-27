@@ -5,26 +5,45 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist, TwistStamped
 import cv2
 import numpy as np
+import time
+import sys
+
+if sys.platform == 'win32':
+    import msvcrt
+else:
+    import termios
+    import tty
+
+def saveTerminalSettings():
+    if sys.platform == 'win32':
+        return None
+    return termios.tcgetattr(sys.stdin)
 
 
-
+def restoreTerminalSettings(old_settings):
+    if sys.platform == 'win32':
+        return
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
 
 class CameraThing(Node):
     def __init__(self):
         super().__init__('camera_node')
+        self.settings = saveTerminalSettings()
 
         self.bridge = CvBridge()
         self.img_pub = self.create_publisher(Image, '/example_image', 10)
         self.subscription = self.create_subscription(Image, '/oakd/rgb/image_raw', self.callback, 10)
-        self.create_timer(1, self.control_loop)
+        
+        self.create_timer(1, self.callback)
+        self.create_timer(1, self.getKey)
+
         self.publisher_ = self.create_publisher(TwistStamped, '/gobilda/cmd_vel', 10)
         self.direction = 1
         self.forward_msg = TwistStamped()
         self.forward_msg.twist.linear.x = float(0.2) #1 m/s
         self.is_red = False
 
-
-    def callback(self, msg):
+    def callback(self, msg): # reads red
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
         print("B:", img[0][0])
@@ -40,11 +59,23 @@ class CameraThing(Node):
 
         print(self.is_red)
 
+    def getKey(self): # read keyboard output
+        if sys.platform == 'win32':
+            # getwch() returns a string on Windows
+            self.key = msvcrt.getwch()
+        else:
+            tty.setraw(sys.stdin.fileno())
+            # sys.stdin.read() returns a string on Linux
+            self.key = sys.stdin.read(1)
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
+        
     def control_loop(self):
         if self.is_red: # goes forward if is_red is true
-             self.forward_msg.twist.linear.x = -1.0
-             self.publisher_.publish(self.forward_msg)
-        
+            self.forward_msg.twist.linear.x = -1.0
+            self.publisher_.publish(self.forward_msg)
+        elif self.key == 'g':
+            self.forward_msg.twist.linear.x = 1.0
+            self.publisher_.publish(self.forward_msg)
 
 def main(args=None):
     rclpy.init(args=args)
