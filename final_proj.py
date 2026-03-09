@@ -1,4 +1,3 @@
-
 import math
 import rclpy
 from rclpy.node import Node
@@ -262,7 +261,7 @@ class LidarDist(Node):
         #self.get_logger().info(f'Minimum distance: {min_dist}')
       
 
-        #self.publisher_.publish(self.turn_msg) # move torwards the target
+        self.publisher_.publish(self.turn_msg) # move torwards the target
       
 def main(args=None):
     rclpy.init(args=args)
